@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>MarvelGPT Mini</title>
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root{--bg:#0b0c10;--panel:#111318;--text:#e6e6e6;--muted:#a4a8ae;--accent:#7aa2ff;}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,Segoe UI,Roboto,Arial,sans-serif;display:flex;min-height:100dvh}
+    .wrap{margin:auto; width:min(900px,100%); padding:clamp(16px,4vw,28px)}
+    header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    header h1{font-size:clamp(20px,5vw,28px);margin:0}
+    .card{background:var(--panel);border-radius:16px;padding:14px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+    .row{display:flex;gap:10px}
+    .row > *{flex:1}
+    input[type="text"]{width:100%;border:1px solid #2a2f3a;background:#0f1116;color:var(--text);border-radius:12px;padding:14px 14px;font-size:16px;outline:none}
+    input::placeholder{color:#778}
+    button{flex:0 0 auto;background:var(--accent);color:#081018;border:0;padding:14px 18px;border-radius:12px;font-weight:700;cursor:pointer}
+    button[disabled]{opacity:.6;cursor:wait}
+    .out{margin-top:12px;white-space:pre-wrap}
+    .answer{font-size:17px}
+    .small{color:var(--muted);font-size:14px}
+    .src a{color:var(--accent);text-decoration:none}
+    .src a:hover{text-decoration:underline}
+    .spinner{display:inline-block;width:18px;height:18px;border:3px solid #556;border-right-color:transparent;border-radius:50%;animation:spin 0.9s linear infinite;vertical-align:-3px;margin-right:8px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (max-width:560px){
+      .row{flex-direction:column}
+      button{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="https://fav.farm/🦸" alt="" width="28" height="28" />
+      <h1>MarvelGPT Mini</h1>
+    </header>
+
+    <div class="card">
+      <div class="row">
+        <input id="q" type="text" inputmode="search"
+               placeholder="Ask something Marvel (e.g., 'Latest on Thunderbolts?')"
+               autocomplete="on" />
+        <button id="askBtn" onclick="ask()">Ask</button>
+      </div>
+      <div id="status" class="small" style="margin-top:8px;"></div>
+      <div id="out" class="out">
+        <div id="answer" class="answer"></div>
+        <div id="sources" class="src small"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = "/api/marvelgpt"; // same domain as your Vercel project
+    const qEl = document.getElementById('q');
+    const btn = document.getElementById('askBtn');
+    const statusEl = document.getElementById('status');
+    const answerEl = document.getElementById('answer');
+    const sourcesEl = document.getElementById('sources');
+
+    qEl.value = localStorage.getItem('last_marvel_q') || "";
+    qEl.focus();
+
+    qEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') ask();
+    });
+
+    async function ask() {
+      const question = qEl.value.trim();
+      if (!question) return;
+      localStorage.setItem('last_marvel_q', question);
+
+      setBusy(true, "Searching the web…");
+      answerEl.textContent = "";
+      sourcesEl.innerHTML = "";
+
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+
+        answerEl.textContent = data.text || "No answer returned.";
+        if (Array.isArray(data.citations) && data.citations.length) {
+          sourcesEl.innerHTML =
+            "Sources:<br>" +
+            data.citations.slice(0,10)
+              .map(c => `<a href="${c.url}" target="_blank" rel="noopener">${(c.title||c.url)}</a>`)
+              .join("<br>");
+        } else {
+          sourcesEl.textContent = "No citations returned.";
+        }
+      } catch (err) {
+        answerEl.textContent = "Error contacting the API.";
+        console.error(err);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function setBusy(busy, msg) {
+      btn.disabled = busy;
+      statusEl.innerHTML = busy ? `<span class="spinner"></span>${msg||"Working…"}` : "";
+    }
+  </script>
+</body>
+</html>
