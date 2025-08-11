@@ -1,0 +1,12 @@
+{
+  "name": "marvelgpt-vercel-min",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "openai": "^4.56.0"
+  }
+}
